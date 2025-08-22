@@ -11,7 +11,7 @@ example {R : Type*} [CommRing R] (x y : R) : (x + y) ^ 2 = x ^ 2 + y ^ 2 + 2 * x
 
 example (x y : ℕ) : (x + y) ^ 2 = x ^ 2 + y ^ 2 + 2 * x * y := by ring
 
-example (x : ℤˣ) : x = 1 ∨ x = -1 := Int.units_eq_one_or x
+example (x : ℤˣ) : x = 1 ∨ x = -1 := Int.units_eq_one_or x    -- 单位元 : 可逆元
 
 example {M : Type*} [Monoid M] (x : Mˣ) : (x : M) * x⁻¹ = 1 := Units.mul_inv x
 
@@ -63,7 +63,7 @@ example {R S : Type*} [CommRing R] [CommRing S] (I : Ideal R) (J : Ideal S) (f :
 example {R : Type*} [CommRing R] {I J : Ideal R} (h : I = J) : R ⧸ I ≃+* R ⧸ J :=
   Ideal.quotEquivOfEq h
 
-example {R : Type*} [CommRing R] {ι : Type*} [Fintype ι] (f : ι → Ideal R)
+example {R : Type*} [CommRing R] {ι : Type*} [Fintype ι] (f : ι → Ideal R)    --- 证明满射时运用了中国剩余定理
     (hf : ∀ i j, i ≠ j → IsCoprime (f i) (f j)) : (R ⧸ ⨅ i, f i) ≃+* Π i, R ⧸ f i :=
   Ideal.quotientInfRingEquivPiQuotient f hf
 
@@ -83,20 +83,23 @@ open Ideal Quotient Function
 /-- The homomorphism from ``R ⧸ ⨅ i, I i`` to ``Π i, R ⧸ I i`` featured in the Chinese
   Remainder Theorem. -/
 def chineseMap (I : ι → Ideal R) : (R ⧸ ⨅ i, I i) →+* Π i, R ⧸ I i :=
-  sorry
+  by
+  apply Ideal.Quotient.lift (⨅ i, I i) (Pi.ringHom fun i ↦ Ideal.Quotient.mk (I i))
+  · intro a; rw[mem_iInf]; rintro hi; ext i; dsimp; apply Ideal.Quotient.eq_zero_iff_mem.mpr (hi i)
 
 lemma chineseMap_mk (I : ι → Ideal R) (x : R) :
     chineseMap I (Quotient.mk _ x) = fun i : ι ↦ Ideal.Quotient.mk (I i) x :=
-  sorry
+  by
+  ext i; rfl
 
 lemma chineseMap_mk' (I : ι → Ideal R) (x : R) (i : ι) :
     chineseMap I (mk _ x) i = mk (I i) x :=
-  sorry
+  rfl
 
 #check injective_lift_iff
 
 lemma chineseMap_inj (I : ι → Ideal R) : Injective (chineseMap I) := by
-  sorry
+  rw[chineseMap, injective_lift_iff, ker_Pi_Quotient_mk]
 
 #check IsCoprime
 #check isCoprime_iff_add
@@ -118,10 +121,10 @@ theorem isCoprime_Inf {I : Ideal R} {J : ι → Ideal R} {s : Finset ι}
       rw [Finset.iInf_insert, inf_comm, one_eq_top, eq_top_iff, ← one_eq_top]
       set K := ⨅ j ∈ s, J j
       calc
-        1 = I + K                  := sorry
-        _ = I + K * (I + J i)      := sorry
-        _ = (1 + K) * I + K * J i  := sorry
-        _ ≤ I + K ⊓ J i            := sorry
+        1 = I + K                  := (hs (fun j js ↦ hf j (Finset.mem_insert_of_mem js))).symm   -- by rw[hs]; intro j js; apply hf; apply Finset.mem_insert_of_mem js
+        _ = I + K * (I + J i)      := by rw[hf, mul_one]; apply Finset.mem_insert_self
+        _ = (1 + K) * I + K * J i  := by rw[mul_add, add_mul, add_assoc, one_mul]
+        _ ≤ I + K ⊓ J i            := by gcongr; apply mul_le_left; apply Ideal.mul_le_inf
 lemma chineseMap_surj [Fintype ι] {I : ι → Ideal R}
     (hI : ∀ i j, i ≠ j → IsCoprime (I i) (I j)) : Surjective (chineseMap I) := by
   classical
@@ -130,11 +133,25 @@ lemma chineseMap_surj [Fintype ι] {I : ι → Ideal R}
   have key : ∀ i, ∃ e : R, mk (I i) e = 1 ∧ ∀ j, j ≠ i → mk (I j) e = 0 := by
     intro i
     have hI' : ∀ j ∈ ({i} : Finset ι)ᶜ, IsCoprime (I i) (I j) := by
-      sorry
-    sorry
+      intro j hj; apply hI; simp at *; rwa[eq_comm]
+    rcases isCoprime_iff_exists.mp (isCoprime_Inf hI') with ⟨w, wI, j, jj, ae1⟩
+    use j
+    constructor
+    · have : (mk (I i)) w = 0 := by apply Ideal.Quotient.eq_zero_iff_mem.mpr wI
+      rw[←add_zero ((mk (I i)) j), ←this, ←map_add, add_comm, ae1, map_one]
+    · intro j' hj'
+      apply Ideal.Quotient.eq_zero_iff_mem.mpr
+      rw[Ideal.mem_iInf] at jj
+      have mem : j' ∈ ({i}ᶜ : Finset ι) := by simpa
+      apply Ideal.mem_iInf.mp (jj j') mem
   choose e he using key
   use mk _ (∑ i, f i * e i)
-  sorry
+  ext i
+  rw[chineseMap_mk', map_sum, Fintype.sum_eq_single i]
+  · rw[map_mul]; simp[hf, he]
+  · intro j hj; rw[map_mul];
+    have : (mk (I i)) (e j) = 0 := by rw[(he j).2]; exact hj.symm
+    rw[this, mul_zero]
 
 noncomputable def chineseIso [Fintype ι] (f : ι → Ideal R)
     (hf : ∀ i j, i ≠ j → IsCoprime (f i) (f j)) : (R ⧸ ⨅ i, f i) ≃+* Π i, R ⧸ f i :=
