@@ -35,15 +35,23 @@ def preimage {W : Type*} [AddCommGroup W] [Module K W] (φ : V →ₗ[K] W) (H :
     Submodule K V where
   carrier := φ ⁻¹' H
   zero_mem' := by
-    sorry
+    rw[Set.mem_preimage, map_zero]
+    simp
   add_mem' := by
-    sorry
+    -- rintro _ _ _ _
+    simp [Set.mem_preimage, map_add]
+    intro _ _
+    apply H.add_mem
   smul_mem' := by
-    sorry
+    simp [Set.mem_preimage]
+    intro  _ _
+    apply H.smul_mem
 
 example (U : Submodule K V) : Module K U := inferInstance
 
 example (U : Submodule K V) : Module K {x : V // x ∈ U} := inferInstance
+
+-- Section 10.2.2. 完全格结构和内直和
 
 example (H H' : Submodule K V) :
     ((H ⊓ H' : Submodule K V) : Set V) = (H : Set V) ∩ (H' : Set V) := rfl
@@ -89,6 +97,8 @@ noncomputable example {ι : Type*} [DecidableEq ι] (U : ι → Submodule K V)
   LinearEquiv.ofBijective (coeLinearMap U) h
 end
 
+-- Section 10.2.3. 由集合生成的子空间
+
 example {s : Set V} (E : Submodule K V) : Submodule.span K s ≤ E ↔ s ⊆ E :=
   Submodule.span_le
 
@@ -100,15 +110,24 @@ example {S T : Submodule K V} {x : V} (h : x ∈ S ⊔ T) :
   rw [← S.span_eq, ← T.span_eq, ← Submodule.span_union] at h
   induction h using Submodule.span_induction with
   | mem y h =>
-      sorry
+      rcases h with h | h
+      use y, h, 0, zero_mem T, (add_zero y).symm
+      use 0, zero_mem S, y, h, (zero_add y).symm
   | zero =>
-      sorry
+      use 0, zero_mem S, 0, zero_mem T, (add_zero 0).symm
   | add x y hx hy hx' hy' =>
-      sorry
+      rcases hx' with ⟨s, hs, t, ht, rfl⟩
+      rcases hy' with ⟨s', hs', t', ht', rfl⟩
+      use s+s', S.add_mem hs hs', t+t', T.add_mem ht ht'
+      module
   | smul a x hx hx' =>
-      sorry
+      rcases hx' with ⟨s,hs,t,ht,rfl⟩
+      use a • s, S.smul_mem a hs ,a • t, T.smul_mem a ht
+      module
 
 section
+
+--section 10.2.4. 拉回和推出子空间
 
 variable {W : Type*} [AddCommGroup W] [Module K W] (φ : V →ₗ[K] W)
 
@@ -136,7 +155,18 @@ example : Surjective φ ↔ range φ = ⊤ := range_eq_top.symm
 
 example (E : Submodule K V) (F : Submodule K W) :
     Submodule.map φ E ≤ F ↔ E ≤ Submodule.comap φ F := by
-  sorry
+  constructor
+  · intro h x xE
+    rw[Submodule.mem_comap]
+    apply h
+    exact Submodule.mem_map_of_mem xE
+  · intro h x xE
+    -- rw[Submodule.mem_map] at xE
+    rcases xE with ⟨y, yE, e⟩
+    rw[←e, ←Submodule.mem_comap]
+    apply h yE
+
+-- Section 10.2.5. 商空间
 
 variable (E : Submodule K V)
 
@@ -161,7 +191,7 @@ open Submodule
 #check Submodule.comap_map_eq
 
 example : Submodule K (V ⧸ E) ≃ { F : Submodule K V // E ≤ F } where
-  toFun := sorry
-  invFun := sorry
-  left_inv := sorry
-  right_inv := sorry
+  toFun F := by use comap E.mkQ F; intro x hx; rw[←E.ker_mkQ] at hx; rw[mem_comap, hx]; apply zero_mem
+  invFun F := by apply map E.mkQ F
+  left_inv x:= by dsimp; rw[Submodule.map_comap_eq, inf_eq_right]; intro m hm; rw[range_mkQ]; exact mem_top
+  right_inv := by intro F; ext x; dsimp; rw[Submodule.comap_map_eq, E.ker_mkQ, sup_of_le_left]; apply F.2
