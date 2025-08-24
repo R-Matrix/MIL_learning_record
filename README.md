@@ -13,6 +13,7 @@
 
 ----
 
-官方文档 : [https://github.com/leanprover-community/mathematics_in_lean]
-math-in-lean-zh : [https://github.com/Lean-zh/math-in-lean-zh]
+官方文档 : [这里](https://github.com/leanprover-community/mathematics_in_lean)
+
+中文 : [math-in-lean-zh](https://github.com/Lean-zh/math-in-lean-zh)
 
