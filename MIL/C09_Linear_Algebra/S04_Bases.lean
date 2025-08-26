@@ -198,7 +198,10 @@ example [Fintype ι] (B' : Basis ι K V) (φ : End K V) :
   set M' := toMatrix B' B' φ
   set P := (toMatrix B B') LinearMap.id
   set P' := (toMatrix B' B) LinearMap.id
-  sorry
+
+  have h1 : M' = P * M * P' := by rw[←toMatrix_comp, ←toMatrix_comp, LinearMap.comp_id, LinearMap.id_comp]
+  have h2 : P * P' = 1 := by rw[←toMatrix_comp, LinearMap.id_comp, toMatrix_id]
+  rw[h1, Matrix.det_mul, Matrix.det_mul, mul_assoc, mul_comm M.det, ←mul_assoc, ←Matrix.det_mul, h2, Matrix.det_one, one_mul]
 end
 
 section
@@ -245,7 +248,12 @@ example : finrank K (E ⊔ F : Submodule K V) + finrank K (E ⊓ F : Submodule K
 example : finrank K E ≤ finrank K V := Submodule.finrank_le E
 example (h : finrank K V < finrank K E + finrank K F) :
     Nontrivial (E ⊓ F : Submodule K V) := by
-  sorry
+  rw[Submodule.nontrivial_iff_ne_bot, ←Submodule.one_le_finrank_iff]
+  rw[←Submodule.finrank_sup_add_finrank_inf_eq] at h
+  have := Submodule.finrank_le (E ⊔ F)
+  have := lt_of_le_of_lt this h
+  have : 0 < finrank K (E ⊓ F : Submodule K V) := by apply pos_of_lt_add_right this
+  apply Nat.one_le_of_lt this
 end
 
 #check V -- Type u_2
